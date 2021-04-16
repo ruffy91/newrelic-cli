@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -163,9 +164,70 @@ func (i *RecipeInstaller) installRecipes(ctx context.Context, m *types.Discovery
 	for _, r := range recipes {
 		var err error
 
+		logMatches, err := i.fileFilterer.Filter(utils.SignalCtx, recipes)
+		if err != nil {
+			return err
+		}
+
+		log.Print("\n\n **************************** \n")
+		log.Printf("\n RECIPE:       %+v \n", r)
+		log.Printf("\n LOG MATCHES:  %+v \n", logMatches)
+		log.Print("\n **************************** \n\n")
+		time.Sleep(2 * time.Second)
+
+		var acceptedLogMatches []types.LogMatch
+		var ok bool
+		for _, match := range logMatches {
+			ok, err = i.userAcceptsLogFile(match)
+			if err != nil {
+				return err
+			}
+
+			if ok {
+				acceptedLogMatches = append(acceptedLogMatches, match)
+			}
+		}
+
 		log.WithFields(log.Fields{
 			"name": r.Name,
 		}).Debug("installing recipe")
+
+		// The struct to approximate the logging configuration file of the Infra Agent. (deprecated)
+		type loggingConfig struct {
+			Logs []types.LogMatch `yaml:"logs"`
+		}
+
+		// discoveredLogsStruct := loggingConfig{
+		// 	Logs: []types.LogMatch{
+		// 		{
+		// 			Name: "docker log",
+		// 			File: "/var/lib/docker/containers/*/*.log",
+		// 		},
+		// 	},
+		// }
+
+		// acceptedLogMatches := discoveredLogsStruct.Logs
+
+		// Build a comma-separated list of discovered log file paths
+		discoveredLogFiles := []string{}
+		for _, logMatch := range acceptedLogMatches {
+			discoveredLogFiles = append(discoveredLogFiles, logMatch.File)
+		}
+
+		r.AddVar("DISCOVERED_LOG_FILES", loggingConfig{Logs: acceptedLogMatches})
+
+		// NR_DISCOVERED_LOG_FILES will be replacing DISCOVERED_LOG_FILES in recipes.
+		discoveredLogFilesString := strings.Join(discoveredLogFiles, ",")
+		r.AddVar("NR_DISCOVERED_LOG_FILES", discoveredLogFilesString)
+
+		log.Print("\n\n **************************** \n")
+		log.Printf("\n acceptedLogMatches:  %+v \n", loggingConfig{Logs: acceptedLogMatches})
+		log.Print("\n **************************** \n\n")
+		time.Sleep(2 * time.Second)
+
+		log.WithFields(log.Fields{
+			"NR_DISCOVERED_LOG_FILES": discoveredLogFilesString,
+		}).Debug("discovered log files")
 
 		_, err = i.executeAndValidateWithProgress(ctx, m, &r)
 		if err != nil {
