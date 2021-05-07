@@ -3,6 +3,7 @@ package execution
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -110,6 +111,12 @@ func (r TerminalStatusReporter) InstallComplete(status *InstallStatus) error {
 }
 
 func (r *TerminalStatusReporter) getSuccessLink(status *InstallStatus) string {
+	log.Print("\n\n **************************** \n")
+	log.Printf("\n TerminalStatusReporter - statuses:  %+v \n", status.Statuses)
+	log.Printf("\n TerminalStatusReporter - url:      %+v \n", status.RedirectURL)
+	log.Print("\n **************************** \n\n")
+	time.Sleep(3 * time.Second)
+
 	if status.hasAnyRecipeStatus(RecipeStatusTypes.INSTALLED) {
 		switch t := status.successLinkConfig.Type; {
 		case strings.EqualFold(string(t), "explorer"):

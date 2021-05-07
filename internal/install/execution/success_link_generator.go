@@ -21,13 +21,35 @@ func NewConcreteSuccessLinkGenerator() *ConcreteSuccessLinkGenerator {
 }
 
 func (g *ConcreteSuccessLinkGenerator) GenerateExplorerLink(filter string) string {
-	return fmt.Sprintf("https://%s/launcher/nr1-core.explorer?platform[filters]=%s&platform[accountId]=%d",
-		nrPlatformHostname(),
-		utils.Base64Encode(filter),
-		credentials.DefaultProfile().AccountID)
+	return generateExplorerLink(filter)
 }
 
 func (g *ConcreteSuccessLinkGenerator) GenerateEntityLink(entityGUID string) string {
+	return generateEntityLink(entityGUID)
+}
+
+func generateSuccessURL(status InstallStatus) string {
+	if status.hasAnyRecipeStatus(RecipeStatusTypes.INSTALLED) {
+		switch t := status.successLinkConfig.Type; {
+		case strings.EqualFold(string(t), "explorer"):
+			return generateExplorerLink(status.successLinkConfig.Filter)
+		default:
+			return generateExplorerLink(status.HostEntityGUID())
+		}
+	}
+
+	return ""
+}
+
+func generateExplorerLink(filter string) string {
+	return fmt.Sprintf("https://%s/launcher/nr1-core.explorer?platform[filters]=%s&platform[accountId]=%d",
+		nrPlatformHostname(),
+		utils.Base64Encode(filter),
+		credentials.DefaultProfile().AccountID,
+	)
+}
+
+func generateEntityLink(entityGUID string) string {
 	return fmt.Sprintf("https://%s/redirect/entity/%s", nrPlatformHostname(), entityGUID)
 }
 

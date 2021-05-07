@@ -1,6 +1,9 @@
 package execution
 
 import (
+	"encoding/json"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/newrelic/newrelic-cli/internal/install/types"
@@ -15,13 +18,15 @@ const (
 // NerdstorageStatusReporter is an implementation of the ExecutionStatusReporter
 // interface that reports esecution status into NerdStorage.
 type NerdstorageStatusReporter struct {
-	client NerdStorageClient
+	client               NerdStorageClient
+	successLinkGenerator SuccessLinkGenerator
 }
 
 // NewNerdStorageStatusReporter returns a new instance of NerdStorageExecutionStatusReporter.
 func NewNerdStorageStatusReporter(client NerdStorageClient) *NerdstorageStatusReporter {
 	r := NerdstorageStatusReporter{
-		client: client,
+		client:               client,
+		successLinkGenerator: NewConcreteSuccessLinkGenerator(),
 	}
 
 	return &r
@@ -79,6 +84,12 @@ func (r NerdstorageStatusReporter) DiscoveryComplete(status *InstallStatus, dm t
 	return nil
 }
 
+func toJSON(data interface{}) string {
+	c, _ := json.MarshalIndent(data, "", "  ")
+
+	return string(c)
+}
+
 func (r NerdstorageStatusReporter) writeStatus(status *InstallStatus) error {
 	i := r.buildExecutionStatusDocument(status)
 	_, err := r.client.WriteDocumentWithUserScope(i)
@@ -92,6 +103,11 @@ func (r NerdstorageStatusReporter) writeStatus(status *InstallStatus) error {
 			return err
 		}
 	}
+
+	log.Print("\n\n **************************** \n")
+	log.Printf("\n NerdstorageStatusReporter - status:  %+v \n", toJSON(status))
+	log.Print("\n **************************** \n\n")
+	time.Sleep(3 * time.Second)
 
 	if len(status.EntityGUIDs) == 0 {
 		log.Debug("no entity GUIDs available, skipping entity-scoped status updates")
