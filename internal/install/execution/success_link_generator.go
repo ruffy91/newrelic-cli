@@ -1,7 +1,9 @@
 package execution
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/newrelic/newrelic-cli/internal/credentials"
@@ -39,11 +41,21 @@ func (g *ConcreteSuccessLinkGenerator) GenerateEntityLink(entityGUID string) str
 	return generateEntityLink(entityGUID)
 }
 
+func toJSON(data interface{}) string {
+	c, _ := json.MarshalIndent(data, "", "  ")
+
+	return string(c)
+}
+
 // GenerateRedirectURL creates a URL for the user to navigate to after running
 // through an installation. The URL is displayed in the CLI out as well and is
 // also provided in the nerdstorage document. This provides the user two options
 // to see their data - click from the CLI output or from the frontend.
 func (g *ConcreteSuccessLinkGenerator) GenerateRedirectURL(status InstallStatus) string {
+	log.Print("\n\n **************************** \n")
+	log.Printf("\n GenerateRedirectURL - status:       %+v \n", status)
+	log.Printf("\n GenerateRedirectURL - status json:  %+v \n", toJSON(status))
+
 	if status.hasAnyRecipeStatus(RecipeStatusTypes.INSTALLED) {
 		switch t := status.successLinkConfig.Type; {
 		case strings.EqualFold(string(t), "explorer"):
@@ -57,6 +69,9 @@ func (g *ConcreteSuccessLinkGenerator) GenerateRedirectURL(status InstallStatus)
 }
 
 func generateExplorerLink(filter string) string {
+	log.Printf("\n generateExplorerLink - filter:  %+v \n", filter)
+	log.Print("\n **************************** \n\n")
+
 	return fmt.Sprintf("https://%s/launcher/nr1-core.explorer?platform[filters]=%s&platform[accountId]=%d",
 		nrPlatformHostname(),
 		utils.Base64Encode(filter),
@@ -65,6 +80,9 @@ func generateExplorerLink(filter string) string {
 }
 
 func generateEntityLink(entityGUID string) string {
+	log.Printf("\n generateEntityLink - entityGUID:  %+v \n", entityGUID)
+	log.Print("\n **************************** \n\n")
+
 	return fmt.Sprintf("https://%s/redirect/entity/%s", nrPlatformHostname(), entityGUID)
 }
 
